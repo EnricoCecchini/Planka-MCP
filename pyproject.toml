@@ -1,0 +1,21 @@
+[project]
+name = "planka-mcp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { email = "enrico.cecchini243@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "mcp[cli]>=2.3.0",
+    "python-dotenv>=1.2.4",
+    "requests>=2.34.2",
+]
+
+[project.scripts]
+planka-mcp = "planka_mcp:main"
+
+[build-system]
+requires = ["uv_build>=0.12.8,<0.13.0"]
+build-backend = "uv_build"
