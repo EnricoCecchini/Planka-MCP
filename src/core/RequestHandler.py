@@ -14,7 +14,7 @@ class RequestHandler:
         self.api_token = os.getenv("PLANKA_API_KEY")
         api_url = os.getenv("PLANKA_API_URL")
 
-        if not self.api_token or not self.api_url:
+        if not self.api_token or not api_url:
             raise Exception("Missing env variables")
 
         self.api_url = api_url.rstrip("/")
@@ -34,9 +34,17 @@ class RequestHandler:
         response = await self._client.get(url=endpoint)
         response.raise_for_status()
 
+        print(response)
+
         return response.json()
 
     async def close(self) -> None:
         """Close connection"""
 
-        self._client.aclose()
+        await self._client.aclose()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.close()
