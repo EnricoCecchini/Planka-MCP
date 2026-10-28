@@ -1,4 +1,4 @@
-from client.server import mcp
+from planka_mcp.client import mcp
 
 from dotenv import load_dotenv
 import logging

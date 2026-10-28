@@ -2,8 +2,8 @@ from mcp.server import MCPServer
 from typing import List
 import logging
 
-from core import RequestHandler
-from utils import parse_collection
+from planka_mcp.core import RequestHandler
+from planka_mcp.utils import parse_collection
 
 logger = logging.getLogger(__name__)
 

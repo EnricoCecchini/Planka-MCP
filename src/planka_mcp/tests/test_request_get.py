@@ -1,6 +1,6 @@
 import asyncio
 
-from ..core import RequestHandler
+from planka_mcp.core import RequestHandler
 
 
 async def main():
