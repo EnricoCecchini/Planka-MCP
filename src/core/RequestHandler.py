@@ -1,8 +1,13 @@
 import os
 from dotenv import load_dotenv
 import httpx
+from typing import Any
 
 load_dotenv()
+
+
+class PlankaAPIError(Exception):
+    """Raised when HTTP request to Planka's API fails."""
 
 
 class RequestHandler:
@@ -28,15 +33,86 @@ class RequestHandler:
             timeout=timeout,
         )
 
-    async def get(self, endpoint: str):
-        endpoint = endpoint.lstrip("/")
+    async def _request(
+        self,
+        method: str,
+        url: str,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None
+    ):
+        """
+        Method to perform HTTP requests.
 
-        response = await self._client.get(url=endpoint)
-        response.raise_for_status()
+        Args:
+            - method `str` -> Type of request.
+            - url `str` -> Endpoint to request.
+            - json `dict[str, Any]` -> JSON payload.
+            - params `dict[str, Any]` -> JSON params.
+        """
+        endpoint = url.lstrip("/")
 
-        print(response)
+        try:
+            response = await self._client.request(
+                method=method,
+                url=endpoint,
+                params=params,
+                json=json
+            )
 
-        return response.json()
+            response.raise_for_status()
+
+        except httpx.HTTPStatusError as exc:
+            raise PlankaAPIError(
+                f"Planka returned HTTP {exc.response.status_code}"
+            ) from exc
+
+        except httpx.RequestError as exc:
+            raise PlankaAPIError(
+                f"Could not connect to Planka: {exc}"
+            ) from exc
+
+        if not response.content():
+            return None
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise PlankaAPIError(
+                f"Planka returned invalid JSON for "
+                f"{method.upper()} {endpoint}"
+            ) from exc
+
+    """ Request Methods """
+    async def get(
+        self, endpoint: str, *, params: None = None
+    ) -> dict[str, Any] | None:
+        return await self._request(
+            method="GET", url=endpoint, json=None, params=params
+        )
+
+    async def post(
+        self, endpoint: str, *, payload: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        return await self._request(
+            method="POST", url=endpoint, json=payload
+        )
+
+    async def put(
+        self, endpoint: str, *, payload: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        return await self._request(
+            method="PUT", url=endpoint, json=payload
+        )
+
+    async def patch(
+        self, endpoint: str, *, payload: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        return await self._request(
+            method="PATCH", url=endpoint, json=payload
+        )
+
+    async def delete(self, endpoint: str) -> dict[str, Any] | None:
+        return await self._request(method="DELETE", url=endpoint, params=None)
 
     async def close(self) -> None:
         """Close connection"""
