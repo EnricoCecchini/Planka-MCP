@@ -2,6 +2,17 @@ import os
 from dotenv import load_dotenv
 import httpx
 from typing import Any
+import logging
+import sys
+
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    stream=sys.stderr,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -59,6 +70,8 @@ class RequestHandler:
                 json=json
             )
 
+            logger.debug(f"Response: {response}")
+
             response.raise_for_status()
 
         except httpx.HTTPStatusError as exc:
@@ -71,9 +84,6 @@ class RequestHandler:
                 f"Could not connect to Planka: {exc}"
             ) from exc
 
-        if not response.content():
-            return None
-
         try:
             return response.json()
         except ValueError as exc:
@@ -84,7 +94,7 @@ class RequestHandler:
 
     """ Request Methods """
     async def get(
-        self, endpoint: str, *, params: None = None
+        self, endpoint: str, *, params: dict[str, Any] | None = None
     ) -> dict[str, Any] | None:
         return await self._request(
             method="GET", url=endpoint, json=None, params=params
