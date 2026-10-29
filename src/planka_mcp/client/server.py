@@ -1,5 +1,5 @@
 from mcp.server import MCPServer
-from typing import List, Literal, Optional
+from typing import List, Literal
 import logging
 
 from planka_mcp.core import RequestHandler, ProjectIndex
@@ -73,18 +73,3 @@ async def project_create(
     )
 
     return {"message": f"Project {project.get('name')} created successfully."}
-
-
-# @mcp.tool()
-# async def project_create(
-#     name: str, description: str, type: PROJECT_TYPES = "private"
-# ) -> dict | None:
-#     """Create a new project given a name and description."""
-
-#     payload = {
-#         "name": name,
-#         "description": description,
-#         "type": type
-#     }
-
-#     await requests.post(endpoint="/projects", payload=payload)
