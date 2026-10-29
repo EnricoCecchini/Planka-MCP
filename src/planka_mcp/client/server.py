@@ -1,5 +1,5 @@
 from mcp.server import MCPServer
-from typing import List
+from typing import List, Literal
 import logging
 
 from planka_mcp.core import RequestHandler
@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 mcp = MCPServer("Planka")
 
 requests = RequestHandler()
+
+
+PROJECT_TYPES = Literal["private", "shared"]
 
 
 @mcp.resource("test://{message}")
@@ -44,3 +47,37 @@ async def project_by_name(name: str) -> dict | None:
             return item
 
     raise ValueError("Project name not found.")
+
+
+@mcp.tool()
+async def project_create(
+    name: str, description: str, type: PROJECT_TYPES = "private"
+) -> dict | None:
+    """Create a new project given a name and description."""
+
+    payload = {
+        "name": name,
+        "description": description,
+        "type": type
+    }
+
+    resp = await requests.post(endpoint="/projects", payload=payload)
+    project = resp.get("item")
+
+
+
+
+
+# @mcp.tool()
+# async def project_create(
+#     name: str, description: str, type: PROJECT_TYPES = "private"
+# ) -> dict | None:
+#     """Create a new project given a name and description."""
+
+#     payload = {
+#         "name": name,
+#         "description": description,
+#         "type": type
+#     }
+
+#     await requests.post(endpoint="/projects", payload=payload)
