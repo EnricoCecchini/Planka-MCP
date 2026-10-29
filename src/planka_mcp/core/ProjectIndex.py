@@ -17,7 +17,8 @@ class ProjectItem:
 
 
 class ProjectIndex:
-    def __init__(self):
+    def __init__(self, requests: RequestHandler):
+        self.requests = requests
         self.projects: list[ProjectItem] = []
 
     @staticmethod
@@ -28,8 +29,7 @@ class ProjectIndex:
     async def bootstrap(self) -> None:
         """Populate index registry on startup."""
 
-        requests = RequestHandler()
-        response = await requests.get("/projects")
+        response = await self.requests.get("/projects")
 
         items = parse_collection(response)
 
