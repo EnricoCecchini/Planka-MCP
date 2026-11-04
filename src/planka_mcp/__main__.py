@@ -16,7 +16,7 @@ load_dotenv()
 
 
 async def run_main():
-    await projectIndex.bootstrap()
+    await projectIndex.populate()
 
 
 if __name__ == "__main__":

@@ -1,1 +1,1 @@
-from .parsing import parse_collection
+from .parsing import parse_collection, normalize

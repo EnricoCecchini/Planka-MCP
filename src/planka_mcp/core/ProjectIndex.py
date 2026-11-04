@@ -1,7 +1,17 @@
 from difflib import get_close_matches
 
 from .RequestHandler import RequestHandler
-from planka_mcp.utils import parse_collection
+from planka_mcp.utils import parse_collection, normalize
+
+
+class ProjectBoard:
+    def __init__(
+        self, id: str, name: str, description: str | None = None
+    ) -> None:
+        self.id = id
+        self.name = name
+        self.name_normalized = normalize(name)
+        self.description = description
 
 
 class ProjectItem:
@@ -10,10 +20,16 @@ class ProjectItem:
         id: str,
         name: str,
         description: str = "",
+        boards: list[ProjectBoard] | None = None
     ) -> None:
         self.id = id
         self.name = name
+        self.name_normalized = normalize(name)
         self.description = description
+        self.boards: list[ProjectBoard] = boards or []
+
+    def add_board(self, name: str, description: str | None = None) -> None:
+        self.boards.append(ProjectBoard(name=name, description=description))
 
 
 class ProjectIndex:
@@ -21,12 +37,7 @@ class ProjectIndex:
         self.requests = requests
         self.projects: list[ProjectItem] = []
 
-    @staticmethod
-    def _normalize(query: str) -> str:
-        """Normalize strings"""
-        return query.strip().casefold()
-
-    async def bootstrap(self) -> None:
+    async def populate(self) -> None:
         """Populate index registry on startup."""
 
         response = await self.requests.get("/projects")
@@ -36,7 +47,7 @@ class ProjectIndex:
         self.projects = [
             ProjectItem(
                 id=p.get("id"),
-                name=self._normalize(p.get("name")),
+                name=p.get("name"),
                 description=p.get("description"),
             )
             for p in items
@@ -66,7 +77,7 @@ class ProjectIndex:
         self.projects.append(
             ProjectItem(
                 id=id,
-                name=self._normalize(name),
+                name=name,
                 description=description,
             )
         )
@@ -82,13 +93,13 @@ class ProjectIndex:
             - Project ID
         """
 
-        query = self._normalize(query=query)
+        query = normalize(query=query)
 
         for p in self.projects:
-            if query == p.name:
+            if query == p.name_normalized:
                 return p.id
 
-        names = {p.name: p.id for p in self.projects}
+        names = {p.name_normalized: p.id for p in self.projects}
 
         # Use fuzzy matching to get closest match.
         matches = get_close_matches(query, names.keys(), n=1, cutoff=0.6)
