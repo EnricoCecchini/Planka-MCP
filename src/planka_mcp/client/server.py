@@ -1,6 +1,8 @@
 from mcp.server import MCPServer
 from typing import List, Literal
 import logging
+from contextlib import asynccontextmanager
+import sys
 
 from planka_mcp.core import RequestHandler, ProjectIndex
 from planka_mcp.utils import parse_collection
@@ -8,10 +10,17 @@ from planka_mcp.utils import parse_collection
 
 logger = logging.getLogger(__name__)
 
-mcp = MCPServer("Planka")
-
 requests = RequestHandler()
 projectIndex = ProjectIndex(requests=requests)
+
+
+@asynccontextmanager
+async def lifespan(server: MCPServer):
+    await projectIndex.populate()
+    print(f"Pre-loaded Project Index with {len(projectIndex.projects)} projects.", file=sys.stderr, flush=True)
+    yield {}
+
+mcp = MCPServer("Planka", lifespan=lifespan)
 
 
 PROJECT_TYPES = Literal["private", "shared"]
@@ -37,6 +46,15 @@ async def projects() -> List[str]:
 @mcp.tool()
 async def project_by_name(name: str) -> dict | None:
     """Find a project whose name contains the given text (case-insensitive)."""
+
+    # Match project name to ProjectIndex
+    project_id = projectIndex.get_id_by_name(query=name)
+
+    if isinstance(project_id, str):
+        logger.debug("Project found in registry.")
+        result = await requests.get('/projects/' + project_id)
+        return result["item"]
+
     result = await requests.get("/projects")
 
     projects = parse_collection(result)
@@ -48,7 +66,7 @@ async def project_by_name(name: str) -> dict | None:
         if name.lower() in item["name"].lower():
             return item
 
-    raise ValueError("Project name not found.")
+    return {"message": "Project not found."}
 
 
 @mcp.tool()
@@ -73,3 +91,11 @@ async def project_create(
     )
 
     return {"message": f"Project {project.get('name')} created successfully."}
+
+
+@mcp.resource("projects://Index")
+async def project_index() -> None:
+    """Print data in the ProjectIndex instance"""
+
+    projectIndex.print()
+    return {"data": projectIndex.projects}

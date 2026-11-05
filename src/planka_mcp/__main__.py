@@ -12,13 +12,9 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 
+
 load_dotenv()
 
 
-async def run_main():
-    await projectIndex.populate()
-
-
 if __name__ == "__main__":
-    asyncio.run(run_main())
     mcp.run()
