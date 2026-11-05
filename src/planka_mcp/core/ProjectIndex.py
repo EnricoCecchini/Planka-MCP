@@ -2,6 +2,10 @@ from difflib import get_close_matches
 
 from .RequestHandler import RequestHandler
 from planka_mcp.utils import parse_collection, normalize
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectBoard:
@@ -52,6 +56,18 @@ class ProjectIndex:
             )
             for p in items
         ]
+
+    def print(self) -> None:
+        """Print ProjectIndex content."""
+
+        for p in self.projects:
+            logger.debug("Project:", p.name)
+            logger.debug("Description:", p.description or "No description.")
+
+            print("Boards:")
+            for b in p.boards:
+                logger.debug("\tBoard:", b.name)
+                logger.debug("\tDescription:", b.description)
 
     def add(
         self, id: str | None, name: str | None, description: str = ""
