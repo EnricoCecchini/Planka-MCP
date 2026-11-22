@@ -57,7 +57,8 @@ Planka-MCP/
 ├── .python-version             # Python 3.14
 ├── .env.template               # Template for local configuration
 └── src/planka_mcp/
-    ├── main.py                 # Entry point: logging, .env loading, mcp.run()
+    ├── __init__.py
+    ├── main.py                 # Entry point: main() runs the server (`planka-mcp` command)
     ├── client/
     │   └── server.py           # MCPServer instance, lifespan, tools and resources
     ├── core/
@@ -115,8 +116,10 @@ This should print the JSON list of your Planka projects.
 ### 4. Run the server
 
 ```bash
-uv run python -m planka_mcp.main
+uv run planka-mcp
 ```
+
+`planka-mcp` is a console script defined in `pyproject.toml` that calls `planka_mcp.main:main`. `uv run python -m planka_mcp.main` does the same thing.
 
 The server talks over stdio, so it is normally launched by an MCP client rather than run by hand.
 
@@ -125,7 +128,7 @@ The server talks over stdio, so it is normally launched by an MCP client rather 
 ### Claude Code
 
 ```bash
-claude mcp add planka -- uv --directory /absolute/path/to/Planka-MCP run python -m planka_mcp.main
+claude mcp add planka -- uv --directory /absolute/path/to/Planka-MCP run planka-mcp
 ```
 
 ### Claude Desktop / other MCP clients
@@ -139,7 +142,7 @@ Add an entry to the client's MCP config (for Claude Desktop, `claude_desktop_con
       "command": "uv",
       "args": [
         "--directory", "/absolute/path/to/Planka-MCP",
-        "run", "python", "-m", "planka_mcp.main"
+        "run", "planka-mcp"
       ]
     }
   }
