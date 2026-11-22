@@ -156,3 +156,4 @@ The server reads `.env` from the directory it runs in. You can also pass `PLANKA
 - Log with `logging` and never `print()` to stdout, because stdout carries the MCP protocol.
 - Planka wraps collections as `{"items": [...], "included": {...}}`. Use `parse_collection()` to unwrap them.
 - Project name matching is case-insensitive. `normalize()` handles exact matches, and `difflib.get_close_matches` with a 0.6 cutoff handles fuzzy matches.
+- Official Planka API documentation: https://plankanban.github.io/planka/swagger-ui/#/
