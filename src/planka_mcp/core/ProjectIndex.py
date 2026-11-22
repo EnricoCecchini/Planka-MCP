@@ -114,14 +114,14 @@ class ProjectIndex:
     def print(self) -> None:
         """Print ProjectIndex content."""
 
+        # Log to stderr only: stdout carries the MCP stdio protocol.
         for p in self.projects:
-            logger.debug("Project:", p.name)
-            logger.debug("Description:", p.description or "No description.")
-
-            print("Boards:")
+            logger.debug("Project: %s", p.name)
+            logger.debug("Description: %s", p.description or "No description.")
+            logger.debug("Boards:")
             for b in p.boards:
-                logger.debug("\tBoard:", b.name)
-                logger.debug("\tDescription:", b.description)
+                logger.debug("\tBoard: %s (%s)", b.name, b.id)
+                logger.debug("\tTasks: %d", len(b.tasks))
 
     def add(
         self, id: str | None, name: str | None, description: str = ""
