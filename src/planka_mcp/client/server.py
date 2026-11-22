@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 import sys
 
 from planka_mcp.core import RequestHandler, ProjectIndex
+from planka_mcp.core.ProjectIndex import ProjectItem
 from planka_mcp.utils import parse_collection
 
 
@@ -24,6 +25,10 @@ mcp = MCPServer("Planka", lifespan=lifespan)
 
 
 PROJECT_TYPES = Literal["private", "shared"]
+
+# Planka spaces sibling positions by this gap (see POSITION_GAP in Planka).
+POSITION_GAP = 65536
+BOARD_NAME_MAX_LENGTH = 128
 
 
 @mcp.resource("test://{message}")
@@ -93,9 +98,110 @@ async def project_create(
     return {"message": f"Project {project.get('name')} created successfully."}
 
 
+async def _load_project_boards(project_name: str) -> tuple[ProjectItem, list[dict]]:
+    """Resolve a project by name and refresh its boards from Planka.
+
+    Raises:
+        ValueError: If the project cannot be found.
+    """
+    project_id = projectIndex.get_id_by_name(query=project_name)
+    project = projectIndex.get_project(project_id) if project_id else None
+    if project is None:
+        raise ValueError("Project not found.")
+
+    # Planka is the source of truth: boards may have been created or
+    # deleted outside this server since the index was populated.
+    result = await requests.get(f"/projects/{project.id}")
+    included = result.get("included", {}) if isinstance(result, dict) else {}
+    boards = included.get("boards", []) or []
+    project.set_boards(boards)
+
+    return project, boards
+
+
+@mcp.tool()
+async def project_boards(project_name: str) -> dict:
+    """List the existing boards of a project, found by project name."""
+
+    try:
+        project, _ = await _load_project_boards(project_name)
+    except ValueError as exc:
+        return {"message": str(exc)}
+
+    return {
+        "project": {"id": project.id, "name": project.name},
+        "boards": [b.to_dict() for b in project.boards],
+    }
+
+
+@mcp.tool()
+async def board_create(project_name: str, board_name: str) -> dict:
+    """Create a new board in a project, found by project name.
+
+    Fails if the project already has a board with the same name
+    (case-insensitive).
+    """
+
+    board_name = board_name.strip()
+    if not board_name:
+        return {"message": "Board name must not be empty."}
+    if len(board_name) > BOARD_NAME_MAX_LENGTH:
+        return {
+            "message": f"Board name must be at most {BOARD_NAME_MAX_LENGTH} characters."
+        }
+
+    # 1. Identify existing boards for the project.
+    try:
+        project, boards = await _load_project_boards(project_name)
+    except ValueError as exc:
+        return {"message": str(exc)}
+
+    # 2. Validate the new board does not already exist.
+    existing = project.get_board_by_name(board_name)
+    if existing is not None:
+        return {
+            "message": f"Board '{existing.name}' already exists in project '{project.name}'.",
+            "board": existing.to_dict(),
+        }
+
+    # 3. Create the board in Planka, appended after the last board.
+    last_position = max((b.get("position") or 0 for b in boards), default=0)
+    payload = {"name": board_name, "position": last_position + POSITION_GAP}
+
+    resp = await requests.post(endpoint=f"/projects/{project.id}/boards", payload=payload)
+    created = resp.get("item") if isinstance(resp, dict) else None
+    if not created:
+        return {"message": "Planka did not return the created board."}
+
+    # 4. Register the new board in the ProjectIndex (new boards have no tasks).
+    board = projectIndex.add_board(
+        project_id=project.id,
+        id=created.get("id"),
+        name=created.get("name"),
+        position=created.get("position"),
+        tasks=[],
+    )
+
+    return {
+        "message": f"Board '{board.name}' created successfully in project '{project.name}'.",
+        "project": {"id": project.id, "name": project.name},
+        "board": board.to_dict(),
+    }
+
+
 @mcp.resource("projects://Index")
 async def project_index() -> None:
     """Print data in the ProjectIndex instance"""
 
     projectIndex.print()
-    return {"data": projectIndex.projects}
+    return {
+        "data": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "description": p.description,
+                "boards": [b.to_dict() for b in p.boards],
+            }
+            for p in projectIndex.projects
+        ]
+    }
