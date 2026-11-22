@@ -16,5 +16,10 @@ logging.basicConfig(
 load_dotenv()
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Run the Planka MCP server over the stdio transport."""
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()
