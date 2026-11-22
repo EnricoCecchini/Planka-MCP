@@ -4,7 +4,7 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server for th
 
 It lets AI agents (Claude Code, Claude Desktop, or any other MCP client) connect to a Planka instance to read and manage work: load existing projects, boards, lists and tasks (cards), create new projects and tasks, and update task status.
 
-> **Status:** early development. Project lookup and project creation work today. Boards, lists and tasks are on the roadmap below.
+> **Status:** early development. Project lookup, project creation, board listing and board creation work today. Lists and tasks are on the roadmap below.
 
 ## Features
 
@@ -14,17 +14,20 @@ It lets AI agents (Claude Code, Claude Desktop, or any other MCP client) connect
 |----------|------------------|-------------|
 | Tool     | `project_by_name`| Finds a project by name. It uses exact or fuzzy matching against the in-memory project index and falls back to a substring search over the Planka API. |
 | Tool     | `project_create` | Creates a new project with a name, description and type (`private` or `shared`), then adds it to the index. |
+| Tool     | `project_boards` | Lists a project's boards (ID, name, position, tasks). The project is found by name, and its boards are refreshed from Planka. |
+| Tool     | `board_create`   | Creates a board in a project found by name. It rejects a name that already exists in that project (case-insensitive), adds the board after the project's last board, and registers it in the index with its ID, name and an empty task list. |
 | Resource | `projects://list`| Lists all projects visible to the API key. |
-| Resource | `projects://Index`| Returns the contents of the in-memory project index. |
+| Resource | `projects://Index`| Returns the contents of the in-memory project index, including each project's boards. |
 | Resource | `test://{message}`| Echoes a message back, for checking the connection. |
 
 ### Roadmap
 
-- [ ] Load boards for a project (the `ProjectBoard` model already exists)
+- [x] Load boards for a project
 - [ ] Load lists and cards (tasks) for a board
 - [ ] Create tasks (cards) in a list
 - [ ] Update task status by moving cards between lists
-- [ ] Create boards and lists
+- [x] Create boards
+- [ ] Create lists
 
 ## How it works
 
@@ -39,7 +42,7 @@ MCP client (agent)  ──stdio──▶  MCPServer (client/server.py)
                                      Planka REST API
 ```
 
-- **Startup:** the server's `lifespan` hook fetches all projects once and loads them into a `ProjectIndex`. After that, name lookups resolve to an ID without an extra API call.
+- **Startup:** the server's `lifespan` hook fetches all projects once, along with the boards Planka returns in `included.boards`, and loads them into a `ProjectIndex`. After that, name lookups resolve to an ID without an extra API call. Board tools reload a project's boards from `GET /projects/{id}` before they act, so boards created or deleted outside this server are picked up.
 - **Transport:** stdio. stdout is reserved for the MCP protocol, so all logging goes to **stderr**.
 - **HTTP layer:** `RequestHandler` wraps `httpx.AsyncClient`. It:
   - authenticates with the `X-Api-Key` header,
@@ -63,7 +66,7 @@ Planka-MCP/
     │   └── server.py           # MCPServer instance, lifespan, tools and resources
     ├── core/
     │   ├── RequestHandler.py   # Async Planka REST client (auth, validation, limits)
-    │   └── ProjectIndex.py     # ProjectIndex / ProjectItem / ProjectBoard models
+    │   └── ProjectIndex.py     # ProjectIndex / ProjectItem / ProjectBoard registry
     ├── utils/
     │   └── parsing.py          # parse_collection() and normalize() helpers
     └── tests/
